@@ -29,7 +29,7 @@ Including an example of how to use your role (for instance, with variables passe
 ```yaml
 - hosts: servers
   roles:
-    - { role: julb.prometheus-node-exporter }
+    - { role: julb.prometheus_node_exporter }
 ```
 
 ## License
