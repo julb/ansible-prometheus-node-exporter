@@ -1,0 +1,3 @@
+---
+# vars file for prometheus-node-exporter
+node_exporter_executable: /usr/local/sbin/node_exporter

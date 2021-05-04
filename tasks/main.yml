@@ -1,0 +1,82 @@
+---
+
+- name: create a group
+  become: yes
+  ansible.builtin.group:
+    name: "{{ node_exporter_group }}"
+    state: present
+
+- name: create a user
+  become: yes
+  ansible.builtin.user:
+    name: "{{ node_exporter_user }}"
+    group: "{{ node_exporter_group }}"
+    state: present
+    shell: /sbin/nologin
+    system: yes
+    create_home: no
+
+- name: download distribution and validate checksum
+  become: yes
+  ansible.builtin.get_url:
+    url: "{{ node_exporter_releases_url }}/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
+    dest: /tmp/
+    checksum: "sha256:{{ node_exporter_releases_url }}/releases/download/v{{ node_exporter_version }}/sha256sums.txt"
+
+- name: unarchive the distribution and extract binary
+  become: yes
+  ansible.builtin.unarchive:
+    remote_src: yes
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
+    dest: "/tmp/"
+
+- name: copy binary of node exporter
+  become: yes
+  ansible.builtin.copy:
+    remote_src: yes
+    src: /tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}/node_exporter
+    dest: "{{ node_exporter_executable }}"
+    owner: "{{ node_exporter_user }}"
+    group: "{{ node_exporter_group }}"
+    mode: '0755'
+
+- name: remove temporary files
+  become: yes
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}"
+    - "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
+
+- name: create sysconfig
+  become: yes
+  ansible.builtin.template:
+    src: node-exporter.env.j2
+    dest: /etc/sysconfig/node-exporter
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: create systemd service
+  become: yes
+  ansible.builtin.template:
+    src: node-exporter.service.j2
+    dest: /etc/systemd/system/node-exporter.service
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: enable systemd service
+  become: yes
+  ansible.builtin.systemd:
+    name: node-exporter.service
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: verify that service is running
+  ansible.builtin.uri:
+    url: http://localhost:9100/metrics
+  retries: 10
+  delay: 5
