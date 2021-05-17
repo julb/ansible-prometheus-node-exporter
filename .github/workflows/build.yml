@@ -16,14 +16,25 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: '3.9'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ansible==3.3.0 ansible-lint==5.0.8
+
       - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: pip3 install ansible molecule[docker] docker molecule[lint]
+      
       - run: make lint
+
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.9'
+
       - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: pip3 install ansible molecule[docker] docker molecule[lint]
+
       - run: make test

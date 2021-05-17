@@ -13,7 +13,7 @@ help:
 install.dependencies:
 	@exec >&2; \
 	echo "> Installing dependencies."; \
-	echo "NOOP.";
+	echo "NOOP."
 
 #build: @ Builds the package.
 build:
@@ -25,7 +25,7 @@ build:
 test:
 	@exec >&2; \
 	echo "> Testing."; \
-	echo "NOOP."
+	molecule test
 
 #test: @ Push the package.
 push:
@@ -46,8 +46,8 @@ lint:
 	echo "Running ansible syntax-check."; \
 	printf '[defaults]\nroles_path=../' >ansible.cfg; \
 	ansible-playbook tests/test.yml -i tests/inventory --syntax-check; \
-	echo "Running ansible-lint."; \
-	ansible-lint
+	echo "Running molecule lint."; \
+	molecule lint
 
 #version.get: @ Gets the version value.
 version.get:
