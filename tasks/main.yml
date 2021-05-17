@@ -16,38 +16,61 @@
     system: yes
     create_home: no
 
-- name: download distribution and validate checksum
+- name: install node-exporter binary
   become: yes
-  ansible.builtin.get_url:
-    url: "{{ node_exporter_releases_url }}/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
-    dest: /tmp/
-    checksum: "sha256:{{ node_exporter_releases_url }}/releases/download/v{{ node_exporter_version }}/sha256sums.txt"
+  block:
+    - name: download distribution and validate checksum
+      ansible.builtin.get_url:
+        url: "{{ node_exporter_releases_url }}/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
+        dest: /tmp/
+        checksum: "sha256:{{ node_exporter_releases_url }}/releases/download/v{{ node_exporter_version }}/sha256sums.txt"
+      changed_when: no
 
-- name: unarchive the distribution and extract binary
-  become: yes
-  ansible.builtin.unarchive:
-    remote_src: yes
-    src: "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
-    dest: "/tmp/"
+    - name: unarchive the distribution and extract binary
+      ansible.builtin.unarchive:
+        remote_src: yes
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
+        dest: "/tmp/"
+      changed_when: no
 
-- name: copy binary of node exporter
-  become: yes
-  ansible.builtin.copy:
-    remote_src: yes
-    src: /tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}/node_exporter
-    dest: "{{ node_exporter_executable }}"
-    owner: "{{ node_exporter_user }}"
-    group: "{{ node_exporter_group }}"
-    mode: '0755'
+    - name: copy binary of node exporter
+      ansible.builtin.copy:
+        remote_src: yes
+        src: /tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}/node_exporter
+        dest: "{{ node_exporter_executable }}"
+        owner: "{{ node_exporter_user }}"
+        group: "{{ node_exporter_group }}"
+        mode: '0755'
+  
+  always:
+    - name: remove temporary files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}"
+        - "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
+      changed_when: no
 
-- name: remove temporary files
-  become: yes
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  with_items:
-    - "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}"
-    - "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
+- name: allow exporter to listen on tcp port in selinux
+  community.general.seport:
+    ports: "{{ node_exporter_listen_port }}"
+    proto: tcp
+    setype: http_port_t
+    state: present
+  when: ansible_selinux.status == 'enabled'
+
+- name: get service facts
+  ansible.builtin.service_facts:
+
+- name: allow tcp port in firewalld
+  ansible.posix.firewalld:
+    port: "{{ node_exporter_listen_port }}/tcp"
+    permanent: yes
+    zone: "{{ node_exporter_listen_port_firewalld_zone }}"
+    state: enabled
+    immediate: yes
+  when: ansible_facts.services["firewalld.service"] is defined and ansible_facts.services["firewalld.service"].status == 'enabled'
 
 - name: create sysconfig
   become: yes

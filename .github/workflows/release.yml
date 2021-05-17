@@ -15,9 +15,7 @@ jobs:
         python-version: '3.9'
 
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install ansible==3.3.0 ansible-lint==5.0.8 bump2version==1.0.1
+      run: pip3 install ansible molecule[docker] docker molecule[lint] bump2version
 
     - uses: actions/checkout@v2
     

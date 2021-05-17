@@ -1,0 +1,25 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: get node exporter systemd service status
+      become: yes
+      ansible.builtin.systemd:
+        name: node-exporter.service
+        state: started
+      check_mode: yes
+      register: node_exporter_systemd_status
+
+    - name: check node exporter systemd service is running
+      assert:
+        that:
+          - node_exporter_systemd_status.status.ActiveState == 'active'
+          - node_exporter_systemd_status.status.ExecMainCode == '0'
+          - node_exporter_systemd_status.status.ExecMainStatus == '0'
+
+    - name: verify that service is responding
+      ansible.builtin.uri:
+        url: http://localhost:9100/metrics
